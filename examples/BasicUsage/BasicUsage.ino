@@ -40,8 +40,8 @@ void setup() {
   }
   Serial.println();
 
-// can not disable NRF or RP2040 wdt once enabled
-#if !defined(NRF52_SERIES) || !defined(ARDUINO_ARCH_RP2040)
+// can not disable CH32, NRF or RP2040 wdt once enabled
+#if !defined(NRF52_SERIES) && !defined(ARDUINO_ARCH_RP2040) && !defined(ARDUINO_ARCH_CH32)
   // Disable the watchdog entirely by calling Watchdog.disable();
   Watchdog.disable();
 #endif
