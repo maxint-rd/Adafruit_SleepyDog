@@ -1,4 +1,4 @@
-#if defined(ARDUINO_ARCH_CH32)
+#if defined(ARDUINO_ARCH_CH32) || defined(CH32V00x) || defined(CH32X035)
 
 #include "WatchdogCH32.h"
 
@@ -38,6 +38,7 @@ void WatchdogCH32::gpios_off() {
 }
 */
 
+/* was used in CH32X035 example
 void WatchdogCH32::EXTI_INT_INIT(void)
 {   // copied from https://github.com/openwch/ch32x035/blob/main/EVT/EXAM/PWR/Standby_Mode/User/main.c
     EXTI_InitTypeDef EXTI_InitStructure = {0};
@@ -50,6 +51,7 @@ void WatchdogCH32::EXTI_INT_INIT(void)
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;
     EXTI_Init(&EXTI_InitStructure);
 }
+*/
 
 extern "C" {
 extern __IO uint64_t msTick;      // the msTick counter will be updated after sleeping
@@ -245,7 +247,7 @@ int WatchdogCH32::enable(int maxPeriodMS) {
   // On the CH32V003 the independent watchdog uses the LSI clock which runs at 128kHz, using the IWDG_Prescaler_128, the 12 bit counter allows up to 4096 msec
   // On the CH32X035/X033, the 48000MHz HSI clock is used with a 1024 divider. 48MHz/1024=46.875kHz. Using (IWDG_Prescaler_32, 4000) gives 2.7s IWDG reset
 	// set up watchdog (0xfff=4096d, with prescaler 128 this is about 4sec on the CH32V003)
-#if defined(CH32V003)
+#if defined(CH32V00x)
   uint8_t prescaler=IWDG_Prescaler_128;
   #define PERIOD_FIX(x) (x)
   #define PERIOD_FIX_REVERSE(x) (x)
@@ -264,7 +266,7 @@ int WatchdogCH32::enable(int maxPeriodMS) {
   else
   {   // CH32 supports prescaler up to 256, allowing for max 8192 mSec timout on V003. Since a different clock is used that duration may be not very precise
       // On the X035/X035 the HSI is used with a 1024 devider. Using the 256 prescaler gives a maximum timeout of 22.3 sec.
-#if defined(CH32V003)
+#if defined(CH32V00x)
     prescaler=IWDG_Prescaler_256;
     if(maxPeriodMS>0x1fff)
       maxPeriodMS=0x1fff;
