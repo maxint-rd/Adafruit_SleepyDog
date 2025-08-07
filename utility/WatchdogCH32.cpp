@@ -54,7 +54,11 @@ void WatchdogCH32::EXTI_INT_INIT(void)
 */
 
 extern "C" {
+#if defined(CH32VM00X) || defined(CH32V00x)
+extern __IO uint32_t msTick;      // the msTick counter will be updated after sleeping
+#else
 extern __IO uint64_t msTick;      // the msTick counter will be updated after sleeping
+#endif
 }
 
 
@@ -133,7 +137,7 @@ uint32_t WatchdogCH32::pwr_sleep(uint32_t uSleepMS)
     //       Prescaler_10240 offers finer resolution for 0.22 up to 13.76 seconds sleep
     //       48000000/1024/61440=0,762939453125 => 1,31072 sec/count (max 82,57536 sec)
     //       48000000/1024/10240=4,57763671875 => 0,21845333 sec/count (max 13,76256 sec)
-#if defined(CH32V00x)
+#if defined(CH32V00x) || defined(CH32VM00X)
     #define AWU_DIVIDED_COUNTS_PER_KSEC 2083   // 128000/61440=2.08333 => 0.48 sec/count
 #elif defined(CH32X035)
     uPrescaler=PWR_AWU_Prescaler_10240;
@@ -151,16 +155,23 @@ uint32_t WatchdogCH32::pwr_sleep(uint32_t uSleepMS)
     nSleepLeft-=nSleep;
 
     // enable power interface module clock
+#if defined(CH32V00x) || defined(CH32X035)
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
+#elif defined(CH32VM00X)
+    RCC_PB1PeriphClockCmd(RCC_PB1Periph_PWR, ENABLE);
+#else
+    //#warning(NOTE: no support for other CH32 mcu) 
+#endif
+
 
     // TODO: I saw no function that can be called to enable the AutoWakeUp event. WCH Examples use EXTI_Init().
     // Only CH32V003 uses EXTI_Line9 for the wake up event. Other family members use other lines (eg. CH32X035 uses EXTI_Line27)
     // Unfortunately I don't have all other CH32 chips to test and add support.
     // As far as I can see the current core (1.0.4) has no common function to select the line used for AutoWakeUp.
     // I suggest to make this all part of some function related to PWR_AutoWakeUpCmd()
-    // V003: enable AutoWakeUp event  EXTI_Init( EXTI_Line9 EXTI_Mode_Event EXTI_Trigger_Falling ENABLE)
+    // V003/VM00X: enable AutoWakeUp event  EXTI_Init( EXTI_Line9 EXTI_Mode_Event EXTI_Trigger_Falling ENABLE)
     // X035: enable AutoWakeUp event  EXTI_Init( EXTI_Line27 EXTI_Mode_Interrupt EXTI_Trigger_Falling ENABLE)
-#if defined(CH32V00x)
+#if defined(CH32V00x) || defined(CH32VM00X)
     EXTI->EVENR |= EXTI_Line9;
     EXTI->FTENR |= EXTI_Line9;
 #elif defined(CH32X035)
@@ -190,7 +201,7 @@ uint32_t WatchdogCH32::pwr_sleep(uint32_t uSleepMS)
     // configure AWU window comparison value
     PWR_AWU_SetWindowValue(uWindow);
 
-#if defined(CH32V00x)
+#if defined(CH32V00x) || defined(CH32VM00X)
     // enable low speed oscillator (LSI)
     RCC_LSICmd(ENABLE);
     while(RCC_GetFlagStatus(RCC_FLAG_LSIRDY) == RESET);
@@ -202,7 +213,7 @@ uint32_t WatchdogCH32::pwr_sleep(uint32_t uSleepMS)
     // Select deep sleep on power-down (PWR_CTLR_PDDS) and use WFE command to enter Sleep mode.
     PWR_EnterSTANDBYMode(PWR_STANDBYEntry_WFE);       // PWR_STANDBYEntry_WFI is wake up by interrupt, _WFE is wake up by event, 
                                                       // _WFE only available on V003/VM00x, X035 always calls __WFI()=Wait for Interrupt
-#if defined(CH32V00x)
+#if defined(CH32V00x) || defined(CH32VM00X)
     // Back from sleep; restore clock to full speed
     SystemInit();
 #elif defined(CH32X035)
@@ -247,7 +258,7 @@ int WatchdogCH32::enable(int maxPeriodMS) {
   // On the CH32V003 the independent watchdog uses the LSI clock which runs at 128kHz, using the IWDG_Prescaler_128, the 12 bit counter allows up to 4096 msec
   // On the CH32X035/X033, the 48000MHz HSI clock is used with a 1024 divider. 48MHz/1024=46.875kHz. Using (IWDG_Prescaler_32, 4000) gives 2.7s IWDG reset
 	// set up watchdog (0xfff=4096d, with prescaler 128 this is about 4sec on the CH32V003)
-#if defined(CH32V00x)
+#if defined(CH32V00x) || defined(CH32VM00X)
   uint8_t prescaler=IWDG_Prescaler_128;
   #define PERIOD_FIX(x) (x)
   #define PERIOD_FIX_REVERSE(x) (x)
@@ -266,7 +277,7 @@ int WatchdogCH32::enable(int maxPeriodMS) {
   else
   {   // CH32 supports prescaler up to 256, allowing for max 8192 mSec timout on V003. Since a different clock is used that duration may be not very precise
       // On the X035/X035 the HSI is used with a 1024 devider. Using the 256 prescaler gives a maximum timeout of 22.3 sec.
-#if defined(CH32V00x)
+#if defined(CH32V00x) || defined(CH32VM00X)
     prescaler=IWDG_Prescaler_256;
     if(maxPeriodMS>0x1fff)
       maxPeriodMS=0x1fff;
@@ -331,7 +342,9 @@ void WatchdogCH32::disable() {
 */
 /**************************************************************************/
 int WatchdogCH32::sleep(int maxSleepMS) {
-  #warning(NOTE: sleep only works after power cycle) 
+#if defined(CH32V00x)
+  #warning(NOTE: sleep on CH32V003 only works after power cycle) 
+#endif
   if (maxSleepMS < 0)
     return 0;
   maxSleepMS=pwr_sleep(maxSleepMS);

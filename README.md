@@ -14,4 +14,4 @@ Currently supports the following hardware:
 *  ESP32, ESP32-S2, ESP32-S3
 *  ESP8266 WITH CAVEAT: The software and hardware watchdog timers are fixed to specific
 intervals and not programmable. Notes about this are within the `utility/WatchdogESP8266.cpp` file.
-*  CH32V003/CH32X035/X033 WITH CAVEAT: Sleep only works after a cold reset (power off/on). To remind you a warning is triggered upon compilation of the library. To reach lowest power during sleep, GPIO's should be set to INPUT pullup. Currently this is NOT implemented within the sleep function.
+*  CH32V003/CH32X035/X033/CH32V002/V006/VM00X. CAVEAT: On CH32V003 Sleep only works after a cold reset (power off/on). To remind you a warning is triggered upon compilation of the library. To reach lowest power during sleep, GPIO's should be set to INPUT pullup. Currently this is NOT implemented within the sleep function.
